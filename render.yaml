@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ytlearn
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: NOTION_API_KEY
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
+      - key: USER_CONTEXT
+        sync: false
+      - key: FLASK_ENV
+        value: production

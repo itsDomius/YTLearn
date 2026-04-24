@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YTLearn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #080808;
+  --s1: #111;
+  --s2: #181818;
+  --s3: #222;
+  --border: #1e1e1e;
+  --border2: #2a2a2a;
+  --text: #efefef;
+  --dim: #999;
+  --muted: #555;
+  --white: #ffffff;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #eab308;
+  --display: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;overflow-x:hidden}
+
+/* grain */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+/* header */
+header{position:sticky;top:0;z-index:100;background:rgba(8,8,8,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{font-size:16px;font-weight:800;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-mark{width:24px;height:24px;background:var(--white);border-radius:3px;display:grid;place-items:center;flex-shrink:0}
+.logo-mark svg{color:#000}
+.nav{display:flex;gap:2px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:3px}
+.nav-btn{padding:5px 14px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.3px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:var(--display);transition:.12s}
+.nav-btn:hover{color:var(--dim)}
+.nav-btn.on{background:var(--white);color:#000}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--muted);padding:4px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.warn{background:var(--yellow)}
+.dot.err{background:var(--red)}
+
+/* layout */
+main{max-width:1080px;margin:0 auto;padding:40px 32px}
+.tab{display:none;animation:fadeUp .18s ease}
+.tab.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* hero */
+.hero{margin-bottom:40px}
+.hero-tag{font-size:10px;font-family:var(--mono);letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+.hero h1{font-size:48px;font-weight:800;letter-spacing:-2.5px;line-height:1.05;margin-bottom:10px}
+.hero h1 em{color:var(--muted);font-style:normal}
+.hero p{font-size:13px;font-family:var(--mono);color:var(--muted)}
+
+/* context row */
+.ctx-row{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:10px 14px;margin-bottom:28px}
+.ctx-label{font-size:10px;font-family:var(--mono);letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.ctx-input{flex:1;background:transparent;border:none;outline:none;font-size:13px;color:var(--text);font-family:var(--mono)}
+.ctx-input::placeholder{color:var(--muted)}
+
+/* fetch row */
+.fetch-row{display:flex;gap:8px;margin-bottom:6px}
+.field{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;transition:border-color .12s}
+.field:focus{border-color:var(--border2)}
+.field::placeholder{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:11px 18px;border-radius:5px;font-size:12px;font-weight:700;letter-spacing:.4px;border:1px solid var(--border);cursor:pointer;font-family:var(--display);transition:all .12s;white-space:nowrap}
+.btn-w{background:var(--white);color:#000;border-color:var(--white)}
+.btn-w:hover{background:#ddd;transform:translateY(-1px)}
+.btn-w:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-g{background:transparent;color:var(--dim)}
+.btn-g:hover{background:rgba(255,255,255,.05);color:var(--text);border-color:var(--border2)}
+.btn-d{background:transparent;color:var(--red);border-color:transparent;font-size:11px;padding:4px 8px}
+.btn-d:hover{background:rgba(239,68,68,.08)}
+
+/* categories */
+.cat-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.cat-chip{padding:5px 14px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--display);transition:all .12s}
+.cat-chip:hover{border-color:var(--border2);color:var(--dim)}
+.cat-chip.on{background:var(--white);color:#000;border-color:var(--white)}
+.cat-count{font-size:10px;font-family:var(--mono);color:var(--muted);margin-left:auto;white-space:nowrap}
+
+/* selection bar */
+.sel-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:5px;margin-bottom:14px}
+.sel-count{font-size:12px;font-family:var(--mono);color:var(--dim)}
+.sel-count strong{color:var(--white)}
+.sel-actions{display:flex;gap:6px}
+
+/* video grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin-bottom:20px}
+.vcard{background:var(--s1);border:1px solid var(--border);border-radius:5px;overflow:hidden;cursor:pointer;transition:all .12s;position:relative}
+.vcard:hover{border-color:var(--border2);transform:translateY(-1px)}
+.vcard.on{border-color:var(--white)}
+.vcard.on::after{content:'✓';position:absolute;top:7px;right:7px;width:20px;height:20px;background:var(--white);color:#000;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:900}
+.vthumb{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--s2)}
+.vinfo{padding:9px 11px}
+.vtitle{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vmeta{display:flex;align-items:center;gap:7px;font-size:10px;font-family:var(--mono);color:var(--muted)}
+.vdur{background:var(--bg);padding:2px 5px;border-radius:2px;border:1px solid var(--border)}
+.vcat{padding:2px 6px;border-radius:2px;background:rgba(255,255,255,.06);color:var(--dim)}
+
+/* generate btn */
+.gen-btn{width:100%;justify-content:center;padding:13px;font-size:13px;margin-top:6px}
+
+/* progress */
+.prog-wrap{margin:16px 0}
+.prog-label{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px}
+.prog-track{background:var(--s1);border-radius:100px;height:3px;overflow:hidden;border:1px solid var(--border)}
+.prog-fill{height:100%;background:var(--white);border-radius:100px;transition:width .3s ease;width:0%}
+
+/* results */
+.results{display:flex;flex-direction:column;gap:14px;margin-top:32px}
+.rcard{background:var(--s1);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.rhead{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--border)}
+.rthumb{width:76px;height:43px;object-fit:cover;border-radius:3px;flex-shrink:0;background:var(--s2)}
+.rtitle-wrap{flex:1;min-width:0}
+.rtitle{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.rchan{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.rbadge{font-size:9px;font-family:var(--mono);padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap;flex-shrink:0}
+.badge-new{color:var(--green);border-color:var(--green);background:rgba(34,197,94,.06)}
+.badge-cached{color:var(--muted);border-color:var(--border)}
+.rbody{padding:16px}
+.nsect{margin-bottom:18px}
+.nlabel{font-size:9px;font-family:var(--mono);letter-spacing:2px;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.nlabel span{width:15px;height:15px;border:1px solid var(--border2);border-radius:2px;display:grid;place-items:center;font-size:8px;flex-shrink:0}
+.summary{font-size:13px;font-family:var(--mono);color:var(--dim);line-height:1.75;border-left:2px solid var(--border2);padding-left:12px}
+.tlist{list-style:none;display:flex;flex-direction:column;gap:7px}
+.titem{display:flex;gap:9px;font-size:13px;line-height:1.55;color:var(--dim)}
+.titem::before{content:'→';color:var(--white);font-weight:700;flex-shrink:0;margin-top:1px}
+.alist{display:flex;flex-direction:column;gap:6px}
+.aitem{display:flex;gap:8px;font-size:13px;line-height:1.55;color:var(--dim);padding:8px 10px;background:var(--s2);border-radius:4px;border:1px solid var(--border)}
+.aitem::before{content:'⚡';flex-shrink:0}
+.ract{display:flex;gap:7px;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;align-items:center}
+.ract a{text-decoration:none}
+
+/* error card */
+.errc{background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.15);border-radius:5px;padding:11px 14px;font-size:12px;font-family:var(--mono);color:var(--red);display:flex;gap:9px;margin-bottom:8px}
+
+/* library */
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.lcard{background:var(--s1);border:1px solid var(--border);border-radius:5px;overflow:hidden;transition:.12s}
+.lcard:hover{border-color:var(--border2)}
+.lthumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--s2)}
+.lbody{padding:13px}
+.ltitle{font-size:13px;font-weight:700;margin-bottom:3px;line-height:1.3}
+.lchan{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:9px}
+.lsumm{font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.65;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:11px}
+.lfoot{display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px solid var(--border)}
+.ldate{font-size:10px;font-family:var(--mono);color:var(--muted)}
+
+/* empty */
+.empty{text-align:center;padding:64px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:14px;opacity:.3}
+.empty p{font-size:13px;font-family:var(--mono)}
+
+/* spinner */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.12);border-top-color:var(--white);border-radius:50%;animation:spin .55s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+
+/* section divider */
+.sdiv{font-size:10px;font-family:var(--mono);letter-spacing:2px;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.sdiv::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* toast */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--s2);border:1px solid var(--border2);padding:11px 16px;border-radius:5px;font-size:12px;font-family:var(--mono);z-index:9998;transform:translateY(60px);opacity:0;transition:all .18s;max-width:300px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="2" width="10" height="7" rx="1" stroke="#000" stroke-width="1.2"/>
+        <path d="M4.5 4.5l3 1.5-3 1.5v-3z" fill="#000"/>
+      </svg>
+    </div>
+    YTLearn
+  </div>
+  <div class="nav">
+    <button class="nav-btn on" onclick="tab('extract',this)">Extract</button>
+    <button class="nav-btn" onclick="tab('library',this)">Library</button>
+  </div>
+  <div class="status">
+    <div class="dot" id="sdot"></div>
+    <span id="stxt">checking…</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Extract ── -->
+  <div class="tab on" id="tab-extract">
+
+    <div class="hero">
+      <div class="hero-tag">// youtube knowledge extractor</div>
+      <h1>Learn faster.<br/><em>Actually apply it.</em></h1>
+      <p>Paste a channel → videos auto-categorise → pick what to learn → get structured notes.</p>
+    </div>
+
+    <div class="ctx-row">
+      <span class="ctx-label">Your context</span>
+      <input class="ctx-input" id="ctx" type="text"
+        placeholder="Describe yourself so the 'how to apply' section is personalised to you…"/>
+    </div>
+
+    <div class="sdiv">Channel</div>
+    <div class="fetch-row">
+      <input class="field" id="ch-url" type="text"
+        placeholder="https://www.youtube.com/@channelname  or  @channelname"/>
+      <button class="btn btn-w" id="fetch-btn" onclick="fetchChannel()">
+        <span id="fetch-txt">Fetch</span>
+        <span id="fetch-spin" class="spin hidden"></span>
+      </button>
+    </div>
+
+    <!-- video section -->
+    <div id="vsec" class="hidden">
+
+      <!-- category filter -->
+      <div class="cat-bar" id="cat-bar"></div>
+
+      <!-- selection bar -->
+      <div class="sel-bar">
+        <span class="sel-count"><strong id="selN">0</strong> selected</span>
+        <div class="sel-actions">
+          <button class="btn btn-g" style="font-size:11px;padding:5px 11px" onclick="selAll()">All</button>
+          <button class="btn btn-g" style="font-size:11px;padding:5px 11px" onclick="selClear()">Clear</button>
+          <button class="btn btn-g" style="font-size:11px;padding:5px 11px" onclick="selCategory()">Select category</button>
+        </div>
+      </div>
+
+      <div class="grid" id="vgrid"></div>
+
+      <button class="btn btn-w gen-btn" id="gen-btn" onclick="processVideos()" disabled>
+        <span id="gen-txt">Generate Notes</span>
+        <span id="gen-spin" class="spin hidden"></span>
+      </button>
+    </div>
+
+    <!-- progress -->
+    <div id="progsec" class="hidden">
+      <div class="prog-wrap">
+        <div class="prog-label" id="prog-lbl">Processing…</div>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- results -->
+    <div id="ressec" class="hidden">
+      <div class="sdiv" style="margin-top:36px">Results</div>
+      <div id="errs"></div>
+      <div class="results" id="results"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Library ── -->
+  <div class="tab" id="tab-library">
+    <div class="hero">
+      <div class="hero-tag">// saved notes</div>
+      <h1>Your <em>library.</em></h1>
+      <p>Every video you've processed, cached and searchable.</p>
+    </div>
+    <div class="lib-grid" id="libgrid">
+      <div class="empty"><div class="empty-icon">📚</div><p>No notes yet.</p></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ── state ──────────────────────────────────────────────────────────────────
+let videos = []          // full list from server
+let categories = []      // category names
+let activeCat = 'All'    // current filter
+let selected = new Set() // selected video IDs
+
+// ── init ───────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch('/api/config').then(r=>r.json())
+    const dot = id('sdot'), txt = id('stxt')
+    if (r.openai_configured) {
+      dot.className = 'dot ok'
+      txt.textContent = r.notion_configured ? 'ready · notion on' : 'ready'
+    } else {
+      dot.className = 'dot warn'
+      txt.textContent = 'no api key'
+    }
+    if (r.user_context) id('ctx').value = r.user_context
+  } catch {
+    id('sdot').className = 'dot err'
+    id('stxt').textContent = 'offline'
+  }
+}
+
+// ── tab switch ─────────────────────────────────────────────────────────────
+function tab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'))
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('on'))
+  id('tab-' + name).classList.add('on')
+  btn.classList.add('on')
+  if (name === 'library') loadLibrary()
+}
+
+// ── fetch channel ──────────────────────────────────────────────────────────
+async function fetchChannel() {
+  const url = id('ch-url').value.trim()
+  if (!url) { toast('Paste a channel URL first', 'err'); return }
+
+  setFetch(true)
+  id('vsec').classList.add('hidden')
+  id('ressec').classList.add('hidden')
+
+  try {
+    const r = await fetch('/api/channel', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    })
+    const d = await r.json()
+    if (!r.ok) { toast(d.error || 'Failed', 'err'); return }
+
+    videos = d.videos
+    categories = d.categories || []
+    selected.clear()
+    activeCat = 'All'
+
+    renderCatBar()
+    renderGrid()
+    id('vsec').classList.remove('hidden')
+    toast(`${videos.length} videos · ${categories.length} categories`, 'ok')
+  } catch {
+    toast('Network error', 'err')
+  } finally {
+    setFetch(false)
+  }
+}
+
+function setFetch(v) {
+  id('fetch-btn').disabled = v
+  id('fetch-txt').textContent = v ? 'Fetching…' : 'Fetch'
+  id('fetch-spin').classList.toggle('hidden', !v)
+}
+
+// ── category bar ───────────────────────────────────────────────────────────
+function renderCatBar() {
+  const bar = id('cat-bar')
+  const allCats = ['All', ...categories]
+  const counts = {}
+  videos.forEach(v => { counts[v.category] = (counts[v.category]||0)+1 })
+
+  bar.innerHTML = allCats.map(c => {
+    const n = c === 'All' ? videos.length : (counts[c] || 0)
+    return `<button class="cat-chip${c===activeCat?' on':''}"
+      onclick="setCat('${esc(c)}')">${esc(c)} <span style="opacity:.5;font-weight:400">${n}</span></button>`
+  }).join('') + `<span class="cat-count" id="cat-count"></span>`
+  updateCatCount()
+}
+
+function setCat(cat) {
+  activeCat = cat
+  renderCatBar()
+  renderGrid()
+}
+
+function updateCatCount() {
+  const visible = filteredVideos()
+  const selInView = visible.filter(v => selected.has(v.id)).length
+  const el = id('cat-count')
+  if (el) el.textContent = selInView ? `${selInView} selected in view` : ''
+}
+
+function filteredVideos() {
+  if (activeCat === 'All') return videos
+  return videos.filter(v => v.category === activeCat)
+}
+
+// ── video grid ─────────────────────────────────────────────────────────────
+function renderGrid() {
+  const list = filteredVideos()
+  id('vgrid').innerHTML = list.map(v => `
+    <div class="vcard${selected.has(v.id)?' on':''}" onclick="toggleV('${v.id}')" id="vc-${v.id}">
+      <img class="vthumb" src="${v.thumbnail}" loading="lazy"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22180%22><rect fill=%22%23181818%22 width=%22100%25%22 height=%22100%25%22/></svg>'"/>
+      <div class="vinfo">
+        <div class="vtitle">${esc(v.title)}</div>
+        <div class="vmeta">
+          <span class="vdur">${v.duration}</span>
+          <span class="vcat">${esc(v.category||'')}</span>
+        </div>
+      </div>
+    </div>
+  `).join('')
+  updateSelCount()
+}
+
+function toggleV(id_) {
+  selected.has(id_) ? selected.delete(id_) : selected.add(id_)
+  id('vc-' + id_)?.classList.toggle('on', selected.has(id_))
+  updateSelCount()
+  updateCatCount()
+}
+
+function updateSelCount() {
+  id('selN').textContent = selected.size
+  id('gen-btn').disabled = selected.size === 0
+}
+
+function selAll() {
+  videos.forEach(v => selected.add(v.id))
+  renderGrid()
+}
+
+function selClear() {
+  selected.clear()
+  renderGrid()
+}
+
+function selCategory() {
+  filteredVideos().forEach(v => selected.add(v.id))
+  renderGrid()
+}
+
+// ── process ────────────────────────────────────────────────────────────────
+async function processVideos() {
+  if (!selected.size) return
+  const ctx = id('ctx').value.trim() || 'I want to learn and apply practical insights.'
+  const videoMap = {}
+  videos.forEach(v => { videoMap[v.id] = v })
+  const ids = [...selected]
+
+  setGen(true)
+  id('ressec').classList.add('hidden')
+  id('progsec').classList.remove('hidden')
+  setProgress(10, `Sending ${ids.length} videos to AI…`)
+
+  try {
+    const r = await fetch('/api/process', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({video_ids: ids, video_map: videoMap, user_context: ctx})
+    })
+    const d = await r.json()
+    if (!r.ok) { toast(d.error || 'Failed', 'err'); return }
+
+    setProgress(100, 'Done')
+    renderResults(d.results, d.errors)
+    id('ressec').classList.remove('hidden')
+    if (d.results.length) toast(`${d.results.length} notes generated`, 'ok')
+  } catch {
+    toast('Processing failed', 'err')
+  } finally {
+    setGen(false)
+    setTimeout(() => id('progsec').classList.add('hidden'), 1200)
+  }
+}
+
+function setGen(v) {
+  id('gen-btn').disabled = v
+  id('gen-txt').textContent = v ? 'Processing…' : 'Generate Notes'
+  id('gen-spin').classList.toggle('hidden', !v)
+}
+
+function setProgress(pct, msg) {
+  id('prog-fill').style.width = pct + '%'
+  id('prog-lbl').textContent = msg
+}
+
+// ── render results ─────────────────────────────────────────────────────────
+function renderResults(results, errors) {
+  id('errs').innerHTML = errors.map(e => `
+    <div class="errc"><span>✕</span><span><strong>${esc(e.title||e.video_id)}</strong> — ${esc(e.error)}</span></div>
+  `).join('')
+
+  id('results').innerHTML = results.map(r => `
+    <div class="rcard">
+      <div class="rhead">
+        <img class="rthumb" src="${r.thumbnail}"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2276%22 height=%2243%22><rect fill=%22%23181818%22 width=%22100%25%22 height=%22100%25%22/></svg>'"/>
+        <div class="rtitle-wrap">
+          <div class="rtitle">${esc(r.title)}</div>
+          <div class="rchan">${esc(r.channel||'')} ${r.category ? '· '+esc(r.category) : ''}</div>
+        </div>
+        <span class="rbadge ${r.cached?'badge-cached':'badge-new'}">${r.cached?'cached':'new'}</span>
+      </div>
+      <div class="rbody">
+        <div class="nsect">
+          <div class="nlabel"><span>S</span> Summary</div>
+          <p class="summary">${esc(r.summary)}</p>
+        </div>
+        <div class="nsect">
+          <div class="nlabel"><span>K</span> Key Takeaways</div>
+          <ul class="tlist">${r.key_takeaways.map(t=>`<li class="titem">${esc(t)}</li>`).join('')}</ul>
+        </div>
+        <div class="nsect">
+          <div class="nlabel"><span>A</span> How to Apply</div>
+          <div class="alist">${r.how_to_apply.map(a=>`<div class="aitem">${esc(a)}</div>`).join('')}</div>
+        </div>
+        <div class="ract">
+          <a href="${r.video_url}" target="_blank" class="btn btn-g" style="font-size:11px;padding:5px 11px">↗ Watch</a>
+          <button class="btn btn-g" style="font-size:11px;padding:5px 11px"
+            onclick='copyNote(${JSON.stringify(r).replace(/"/g,"&quot;")})'>Copy MD</button>
+        </div>
+      </div>
+    </div>
+  `).join('')
+}
+
+function copyNote(r) {
+  const md = `# ${r.title}\n\n## Summary\n${r.summary}\n\n## Key Takeaways\n${r.key_takeaways.map(t=>'- '+t).join('\n')}\n\n## How to Apply\n${r.how_to_apply.map(a=>'- '+a).join('\n')}`
+  navigator.clipboard.writeText(md).then(() => toast('Copied as Markdown', 'ok'))
+}
+
+// ── library ────────────────────────────────────────────────────────────────
+async function loadLibrary() {
+  const g = id('libgrid')
+  g.innerHTML = '<div class="empty"><p>Loading…</p></div>'
+  try {
+    const d = await fetch('/api/library').then(r=>r.json())
+    if (!d.notes.length) {
+      g.innerHTML = '<div class="empty"><div class="empty-icon">📚</div><p>No notes yet.</p></div>'
+      return
+    }
+    g.innerHTML = d.notes.map(n => `
+      <div class="lcard">
+        <img class="lthumb" src="${n.thumbnail||''}"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22169%22><rect fill=%22%23181818%22 width=%22100%25%22 height=%22100%25%22/></svg>'"/>
+        <div class="lbody">
+          <div class="ltitle">${esc(n.title||'')}</div>
+          <div class="lchan">${esc(n.channel||'')}</div>
+          <div class="lsumm">${esc(n.summary||'')}</div>
+          <div class="lfoot">
+            <span class="ldate">${fmtDate(n.created_at)}</span>
+            <button class="btn btn-d" onclick="delNote('${n.video_id}',this)">Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join('')
+  } catch {
+    g.innerHTML = '<div class="empty"><p>Failed to load.</p></div>'
+  }
+}
+
+async function delNote(vid, btn) {
+  btn.disabled = true; btn.textContent = '…'
+  await fetch('/api/library/'+vid, {method:'DELETE'})
+  btn.closest('.lcard').remove()
+  toast('Deleted', 'ok')
+}
+
+// ── utils ──────────────────────────────────────────────────────────────────
+function id(s) { return document.getElementById(s) }
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+}
+function fmtDate(s) {
+  try { return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) }
+  catch { return s||'' }
+}
+let _tt
+function toast(msg, type='') {
+  const el = id('toast')
+  el.textContent = msg
+  el.className = 'show ' + type
+  clearTimeout(_tt)
+  _tt = setTimeout(() => el.className='', 3000)
+}
+
+// enter key
+document.addEventListener('DOMContentLoaded', () => {
+  id('ch-url').addEventListener('keydown', e => { if(e.key==='Enter') fetchChannel() })
+  init()
+})
+</script>
+</body>
+</html>
