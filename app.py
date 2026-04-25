@@ -185,99 +185,42 @@ Rules: categories 1-3 words, every video assigned, roughly even distribution."""
         v["category"] = assignments.get(v["id"], categories[0] if categories else "General")
     return videos, categories
 
+SUPADATA_API_KEY = os.getenv("SUPADATA_API_KEY", "")
+
 def fetch_transcript(video_id):
     """
-    Fetch transcript using yt-dlp — handles cloud IP blocks better than
-    youtube-transcript-api by mimicking a real browser request.
-    Falls back to youtube-transcript-api if yt-dlp fails.
+    Fetch transcript using Supadata API (primary) — handles all IP blocks
+    on their end. Falls back to youtube-transcript-api if not configured.
+    Sign up free at supadata.ai — 100 requests/month, no credit card.
     """
-    import yt_dlp
     import urllib.request
-    import json as _json
+    import urllib.error
 
-    url = f"https://www.youtube.com/watch?v={video_id}"
+    # ── Primary: Supadata API ─────────────────────────────────────────────────
+    if SUPADATA_API_KEY:
+        try:
+            url = f"https://api.supadata.ai/v1/youtube/transcript?videoId={video_id}&text=true"
+            req = urllib.request.Request(
+                url,
+                headers={"x-api-key": SUPADATA_API_KEY}
+            )
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
 
-    # ── Primary: yt-dlp subtitle extraction ──────────────────────────────────
-    try:
-        ydl_opts = {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "writesubtitles": False,
-            "writeautomaticsub": False,
-            # Mimic a real browser
-            "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-
-        # Prefer manual English subtitles, fall back to auto-generated
-        subs = info.get("subtitles", {})
-        auto = info.get("automatic_captions", {})
-
-        chosen = None
-        for lang in ["en", "en-US", "en-GB", "en-orig"]:
-            if lang in subs:
-                chosen = subs[lang]
-                break
-        if not chosen:
-            for lang in ["en", "en-US", "en-GB", "en-orig"]:
-                if lang in auto:
-                    chosen = auto[lang]
-                    break
-
-        if chosen:
-            # Find JSON3 format (easiest to parse), fall back to srv1/vtt
-            fmt_url = None
-            for fmt in chosen:
-                if fmt.get("ext") == "json3":
-                    fmt_url = fmt["url"]
-                    break
-            if not fmt_url:
-                for fmt in chosen:
-                    if fmt.get("ext") in ("srv1", "vtt", "srv3"):
-                        fmt_url = fmt["url"]
-                        break
-
-            if fmt_url:
-                req = urllib.request.Request(
-                    fmt_url,
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                )
-                with urllib.request.urlopen(req, timeout=15) as resp:
-                    raw = resp.read().decode("utf-8")
-
-                # Parse JSON3 format
-                if "json3" in fmt_url or raw.strip().startswith("{"):
-                    try:
-                        data = _json.loads(raw)
-                        events = data.get("events", [])
-                        parts = []
-                        for event in events:
-                            for seg in event.get("segs", []):
-                                t = seg.get("utf8", "").strip()
-                                if t and t != "\n":
-                                    parts.append(t)
-                        text = " ".join(parts)
-                    except Exception:
-                        # Fall through to VTT parsing
-                        text = _parse_vtt(raw)
-                else:
-                    text = _parse_vtt(raw)
-
-                text = re.sub(r"\[.*?\]", "", text)
-                text = re.sub(r"<[^>]+>", "", text)   # strip HTML tags from VTT
+            text = data.get("content", "")
+            if text and len(text) > 100:
                 text = re.sub(r"\s+", " ", text).strip()
-                if len(text) > 100:
-                    return text, None
+                return text, None
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None, "No transcript found for this video."
+            if e.code == 403:
+                return None, "This video is private or restricted."
+            # Other errors fall through to backup
+        except Exception:
+            pass  # Fall through to backup
 
-    except Exception as e:
-        pass  # Fall through to backup method
-
-    # ── Fallback: youtube-transcript-api ────────────────────────────────────
+    # ── Fallback: youtube-transcript-api ─────────────────────────────────────
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         ytt = YouTubeTranscriptApi()
@@ -292,22 +235,8 @@ def fetch_transcript(video_id):
             return None, "Transcripts are disabled for this video."
         if "no transcript" in err.lower() or "Could not find" in err.lower():
             return None, "No English transcript found."
-        return None, "Could not fetch transcript — YouTube may be blocking this server. Try a different video or contact support."
 
-
-def _parse_vtt(vtt_text):
-    """Extract plain text from WebVTT subtitle format."""
-    lines = []
-    for line in vtt_text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith("WEBVTT") or line.startswith("NOTE") or "-->" in line:
-            continue
-        if re.match(r"^\d+$", line):
-            continue
-        lines.append(line)
-    return " ".join(lines)
+    return None, "Could not fetch transcript. Add a SUPADATA_API_KEY to fix this — free at supadata.ai (100/month, no card)."
 
 def generate_notes(title, transcript, user_context, style="study"):
     from openai import OpenAI
