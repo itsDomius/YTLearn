@@ -437,127 +437,27 @@ function selClear() { selected.clear(); renderGrid() }
 function selCategory() { filteredVideos().forEach(v=>selected.add(v.id)); renderGrid() }
 
 // ── process ────────────────────────────────────────────────────────────────
-// ── Innertube transcript fetcher (runs in browser — no cloud IP issues) ──────
-async function fetchTranscriptFromBrowser(videoId) {
-  try {
-    // Step 1: get page HTML and extract Innertube API key
-    const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { 'Accept-Language': 'en-US,en;q=0.9' }
-    })
-    const html = await pageResp.text()
-    const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/)
-    if (!apiKeyMatch) throw new Error('No API key found')
-    const apiKey = apiKeyMatch[1]
-
-    // Step 2: call Innertube player API as Android client
-    const playerResp = await fetch(
-      `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        context: { client: { clientName: 'ANDROID', clientVersion: '19.09.37',
-          androidSdkVersion: 30, hl: 'en', gl: 'US' } },
-        videoId
-      })
-    })
-    const playerData = await playerResp.json()
-
-    // Step 3: find English caption track
-    const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks
-    if (!tracks || !tracks.length) throw new Error('No captions found')
-
-    const track = tracks.find(t => t.languageCode?.startsWith('en')) || tracks[0]
-    const captionUrl = track.baseUrl + '&fmt=json3'
-
-    // Step 4: fetch caption data
-    const captionResp = await fetch(captionUrl)
-    const captionData = await captionResp.json()
-
-    // Step 5: parse JSON3 format into plain text
-    const parts = []
-    for (const event of (captionData.events || [])) {
-      for (const seg of (event.segs || [])) {
-        const t = (seg.utf8 || '').trim()
-        if (t && t !== '\n') parts.push(t)
-      }
-    }
-    const text = parts.join(' ').replace(/\s+/g, ' ').trim()
-    if (text.length < 100) throw new Error('Transcript too short')
-    return { text, error: null }
-  } catch(e) {
-    return { text: null, error: e.message }
-  }
-}
-
 async function processVideos() {
   if (!selected.size) return
   const ctx = id('ctx').value.trim()||'I want to learn and apply practical insights.'
   const videoMap={}; videos.forEach(v=>{videoMap[v.id]=v})
   const ids=[...selected]
-
   setGen(true)
   id('ressec').classList.add('hidden')
   id('progsec').classList.remove('hidden')
-
-  const results = []
-  const errors = []
-
-  for (let i = 0; i < ids.length; i++) {
-    const vid = videoMap[ids[i]]
-    setProgress(
-      Math.round(10 + (i / ids.length) * 85),
-      `Fetching transcript ${i+1}/${ids.length}: ${vid.title.substring(0,40)}…`
-    )
-
-    // Fetch transcript from browser (bypasses YouTube cloud IP blocks)
-    const { text: transcript, error: tErr } = await fetchTranscriptFromBrowser(vid.id)
-
-    if (!transcript) {
-      errors.push({ video_id: vid.id, title: vid.title,
-        error: tErr || 'Could not fetch transcript' })
-      continue
-    }
-
-    setProgress(
-      Math.round(10 + ((i + 0.5) / ids.length) * 85),
-      `Generating notes ${i+1}/${ids.length}…`
-    )
-
-    // Send transcript + metadata to server for AI processing
-    try {
-      const r = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          video_id: vid.id,
-          transcript,
-          title: vid.title,
-          channel: vid.channel,
-          thumbnail: vid.thumbnail,
-          video_url: vid.url,
-          category: vid.category,
-          user_context: ctx,
-          style: activeStyle
-        })
-      })
-      const d = await r.json()
-      if (!r.ok) {
-        errors.push({ video_id: vid.id, title: vid.title, error: d.error || 'AI failed' })
-      } else {
-        results.push(d)
-      }
-    } catch(e) {
-      errors.push({ video_id: vid.id, title: vid.title, error: 'Network error' })
-    }
-  }
-
-  setProgress(100, `Done — ${results.length} notes generated`)
-  renderResults(results, errors)
-  id('ressec').classList.remove('hidden')
-  if (results.length) toast(`${results.length} notes generated`, 'ok')
-  if (errors.length && !results.length) toast(`${errors.length} failed`, 'err')
-  setGen(false)
-  setTimeout(()=>id('progsec').classList.add('hidden'), 1500)
+  setProgress(10,`Processing ${ids.length} video(s) as "${getStyleLabel()}"…`)
+  try {
+    const r = await fetch('/api/process',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({video_ids:ids,video_map:videoMap,user_context:ctx,style:activeStyle})})
+    const d = await r.json()
+    if (!r.ok) { toast(d.error||'Failed','err'); return }
+    setProgress(100,'Done')
+    renderResults(d.results,d.errors)
+    id('ressec').classList.remove('hidden')
+    if (d.results.length) toast(`${d.results.length} notes generated`,'ok')
+    if (d.errors.length && !d.results.length) toast(`${d.errors.length} failed`,'err')
+  } catch { toast('Processing failed','err') }
+  finally { setGen(false); setTimeout(()=>id('progsec').classList.add('hidden'),1200) }
 }
 
 function getStyleLabel() {
